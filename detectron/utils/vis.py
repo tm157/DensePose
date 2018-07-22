@@ -239,6 +239,18 @@ def vis_one_image_opencv(
 
     return im
 
+def get_different_masks(mask, save_mask=False):
+    import PIL.Image as Image
+    mask_list = []
+    for i in range(25):
+        dum_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.uint8)
+        dum_mask[np.where(mask == i)] = 1
+        dum_mask = np.repeat(np.expand_dims(dum_mask, 2), 3, axis=2)
+        im = Image.fromarray(dum_mask * 255)
+        mask_list.append(im)
+        if save_mask:
+            pass
+    return mask_list
 
 def vis_one_image(
         im, im_name, output_dir, boxes, segms=None, keypoints=None, body_uv=None, thresh=0.9,
@@ -378,11 +390,15 @@ def vis_one_image(
                 
     #   DensePose Visualization Starts!!
     ##  Get full IUV image out 
+
     IUV_fields = body_uv[1]
     #
     All_Coords = np.zeros(im.shape)
     All_inds = np.zeros([im.shape[0],im.shape[1]])
     K = 26
+
+    ms_partwise_segm = np.copy(im)
+
     ##
     inds = np.argsort(boxes[:,4])
     ##
@@ -393,14 +409,32 @@ def vis_one_image(
             ####
             output = IUV_fields[ind]
             ####
+            # coordinates in the original image which contains this person 
             All_Coords_Old = All_Coords[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2],:]
+
+            # Fill only those areas which haven't been filled yet i.e. why we
+            # check equality with 0.
             All_Coords_Old[All_Coords_Old==0]=output.transpose([1,2,0])[All_Coords_Old==0]
+
+            # Fill these values into the final All_Coords
             All_Coords[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2],:]= All_Coords_Old
             ###
             CurrentMask = (output[0,:,:]>0).astype(np.float32)
             All_inds_old = All_inds[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2]]
             All_inds_old[All_inds_old==0] = CurrentMask[All_inds_old==0]*i
             All_inds[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2]] = All_inds_old
+
+
+    All_Coords_int = All_Coords.astype(np.int32)
+    import seaborn as sns
+    ms_color_list = 255 * np.array(sns.color_palette("hls", 25))
+    ms_color_list = ms_color_list.tolist()
+    for i in range(1, 25):
+        part_segment = np.where(All_Coords_int[:, :, 0] == i)
+        ms_partwise_segm[part_segment] = ms_color_list[i]
+    MS_segment_name = os.path.basename(im_name).split('.')[0]+'_ms_part_seg.png'
+    cv2.imwrite(os.path.join(output_dir, '{}'.format(MS_segment_name)), ms_partwise_segm)
+
     #
     All_Coords[:,:,1:3] = 255. * All_Coords[:,:,1:3]
     All_Coords[All_Coords>255] = 255.
