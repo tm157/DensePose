@@ -15,6 +15,7 @@ from __future__ import unicode_literals
 import cv2
 import numpy as np
 import os
+import ipdb
 
 import pycocotools.mask as mask_util
 
@@ -240,10 +241,22 @@ def vis_one_image_opencv(
     return im
 
 
+def get_different_masks(mask):
+    import PIL.Image as Image
+    for i in range(1,25):
+        dum_mask = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.uint8)
+        dum_mask[np.where(mask==i)] = 1
+        dum_mask = np.expand_dims(dum_mask, 2)
+        dum_mask = np.repeat(dum_mask, 3, axis=2)
+        im = Image.fromarray(dum_mask*255)
+        im.save('./masks/mask_{}.jpg'.format(i))
+
+
+
 def vis_one_image(
-        im, im_name, output_dir, boxes, segms=None, keypoints=None, body_uv=None, thresh=0.9,
-        kp_thresh=2, dpi=200, box_alpha=0.0, dataset=None, show_class=False,
-        ext='pdf'):
+        im, im_name, output_dir, boxes, segms=None, keypoints=None,
+        body_uv=None, thresh=0.9, kp_thresh=2, dpi=200, box_alpha=0.0,
+        dataset=None, show_class=False, ext='pdf'):
     """Visual debugging of detections."""
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -392,6 +405,8 @@ def vis_one_image(
             entry=entry[0:4].astype(int)
             ####
             output = IUV_fields[ind]
+            # ipdb.set_trace()
+            # get_different_masks(output[0, :, :])
             ####
             All_Coords_Old = All_Coords[ entry[1] : entry[1]+output.shape[1],entry[0]:entry[0]+output.shape[2],:]
             All_Coords_Old[All_Coords_Old==0]=output.transpose([1,2,0])[All_Coords_Old==0]
@@ -406,15 +421,16 @@ def vis_one_image(
     All_Coords[All_Coords>255] = 255.
     All_Coords = All_Coords.astype(np.uint8)
     All_inds = All_inds.astype(np.uint8)
+    return All_Coords
     #
-    IUV_SaveName = os.path.basename(im_name).split('.')[0]+'_IUV.png'
-    INDS_SaveName = os.path.basename(im_name).split('.')[0]+'_INDS.png'
-    cv2.imwrite(os.path.join(output_dir, '{}'.format(IUV_SaveName)), All_Coords )
-    cv2.imwrite(os.path.join(output_dir, '{}'.format(INDS_SaveName)), All_inds )
-    print('IUV written to: ' , os.path.join(output_dir, '{}'.format(IUV_SaveName)) )
-    ###
-    ### DensePose Visualization Done!!
-    #
-    output_name = os.path.basename(im_name) + '.' + ext
-    fig.savefig(os.path.join(output_dir, '{}'.format(output_name)), dpi=dpi)
-    plt.close('all')
+    # IUV_SaveName = os.path.basename(im_name).split('.')[0]+'_IUV.png'
+    # INDS_SaveName = os.path.basename(im_name).split('.')[0]+'_INDS.png'
+    # cv2.imwrite(os.path.join(output_dir, '{}'.format(IUV_SaveName)), All_Coords )
+    # cv2.imwrite(os.path.join(output_dir, '{}'.format(INDS_SaveName)), All_inds )
+    # print('IUV written to: ' , os.path.join(output_dir, '{}'.format(IUV_SaveName)) )
+    # ###
+    # ### DensePose Visualization Done!!
+    # #
+    # output_name = os.path.basename(im_name) + '.' + ext
+    # fig.savefig(os.path.join(output_dir, '{}'.format(output_name)), dpi=dpi)
+    # plt.close('all')
